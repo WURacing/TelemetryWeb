@@ -1,3 +1,5 @@
+import random
+
 from flask import Flask, render_template, url_for
 from flask_socketio import SocketIO
 from threading import Thread, Lock, Event
@@ -23,8 +25,7 @@ emit_thread2 = None
 lock = Lock()
 stop_event = Event()
 
-@app.route('/')
-def dash():
+def respawn_threads_if_needed():
 	global emit_thread1
 	global emit_thread2
 
@@ -36,24 +37,27 @@ def dash():
 		emit_thread2 = Thread(target=emitData,args=(global_vars.secondaries,1))
 		emit_thread2.start()
 
+
+@app.route('/')
+def dash():
+	respawn_threads_if_needed()
 	statics = [('js','dash-client.js'), ('css','dash-style.css')]
 	return render_template('dash.html', statics=statics)
 
 @app.route('/plots')
 def plots():
-	global emit_thread1
-	global emit_thread2
-
-	if emit_thread1 is None:
-		emit_thread1 = Thread(target=emitData,args=(global_vars.primaries,0.2))
-		emit_thread1.start()
-
-	if emit_thread2 is None:
-		emit_thread2 = Thread(target=emitData,args=(global_vars.secondaries,1))
-		emit_thread2.start()
-
+	respawn_threads_if_needed()
 	statics = [('js','jquery.flot.min.js'), ('js','plots-client.js'), ('css','base.css'), ('css','chart-modules.css'), ('css','pure-min.css')]
 	return render_template('plots.html', statics=statics)
+
+@app.route('/maps')
+def maps():
+	respawn_threads_if_needed()
+	statics = [('css','base.css'), ('css','pure-min.css')]
+	mdata = {'center': {'lat': 38.64831890000001, 'lng': -90.3075894}, 'zoom': 16,
+			 'coords': [{'lat': random.uniform(38.64, 38.65), 'lng': random.uniform(-90.30, -90.31)} for x in
+						range(10)]}
+	return render_template('maps.html', statics=statics, map=mdata)
 
 def emitData(keys,delay):
 	global lock
