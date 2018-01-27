@@ -25,41 +25,46 @@ emit_thread2 = None
 lock = Lock()
 stop_event = Event()
 
+
 def respawn_threads_if_needed():
 	global emit_thread1
 	global emit_thread2
 
 	if emit_thread1 is None:
-		emit_thread1 = Thread(target=emitData,args=(global_vars.primaries,0.2))
+		emit_thread1 = Thread(target=emitData, args=(global_vars.primaries, 0.2))
 		emit_thread1.start()
 
 	if emit_thread2 is None:
-		emit_thread2 = Thread(target=emitData,args=(global_vars.secondaries,1))
+		emit_thread2 = Thread(target=emitData, args=(global_vars.secondaries, 1))
 		emit_thread2.start()
 
 
 @app.route('/')
 def dash():
 	respawn_threads_if_needed()
-	statics = [('js','dash-client.js'), ('css','dash-style.css')]
+	statics = [('js', 'dash-client.js'), ('css', 'dash-style.css')]
 	return render_template('dash.html', statics=statics)
+
 
 @app.route('/plots')
 def plots():
 	respawn_threads_if_needed()
-	statics = [('js','jquery.flot.min.js'), ('js','plots-client.js'), ('css','base.css'), ('css','chart-modules.css'), ('css','pure-min.css')]
+	statics = [('js', 'jquery.flot.min.js'), ('js', 'plots-client.js'), ('css', 'base.css'),
+		('css', 'chart-modules.css'), ('css', 'pure-min.css')]
 	return render_template('plots.html', statics=statics)
+
 
 @app.route('/maps')
 def maps():
 	respawn_threads_if_needed()
-	statics = [('css','base.css'), ('css','pure-min.css')]
+	statics = [('css', 'base.css'), ('css', 'pure-min.css')]
 	mdata = {'center': {'lat': 38.64831890000001, 'lng': -90.3075894}, 'zoom': 16,
-			 'coords': [{'lat': random.uniform(38.64, 38.65), 'lng': random.uniform(-90.30, -90.31)} for x in
-						range(10)]}
+		'coords': [{'lat': random.uniform(38.64, 38.65), 'lng': random.uniform(-90.30, -90.31)} for x in
+			range(10)]}
 	return render_template('maps.html', statics=statics, map=mdata)
 
-def emitData(keys,delay):
+
+def emitData(keys, delay):
 	global lock
 	global stop_event
 	while not stop_event.is_set():
@@ -78,9 +83,10 @@ def emitData(keys,delay):
 				if global_vars.data["Throttle"] > 80:
 					global_vars.data["Throttle"] = 0
 			message = {key: global_vars.data[key] for key in keys}
-		#print(message)
+		# print(message)
 		socketio.emit('message', message)
 		time.sleep(delay)
+
 
 def cleanup():
 	global stop_event
@@ -94,13 +100,14 @@ def cleanup():
 	if not debug:
 		serial_thread.cleanup()
 
+
 if __name__ == "__main__":
 
 	global_vars.init()
 
 	if not debug:
 		serial_thread.init(get_port())
-		ser_thread = Thread(target=serial_thread.readData, args=(lock,stop_event))
+		ser_thread = Thread(target=serial_thread.readData, args=(lock, stop_event))
 		ser_thread.start()
 
 	atexit.register(cleanup)
