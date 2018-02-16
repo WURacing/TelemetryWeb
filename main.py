@@ -17,7 +17,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
 
-eventlet.monkey_patch()
+# eventlet.monkey_patch()
 
 ser_thread = None
 emit_thread1 = None
@@ -59,8 +59,7 @@ def maps():
 	respawn_threads_if_needed()
 	statics = [('css', 'base.css'), ('css', 'pure-min.css')]
 	mdata = {'center': {'lat': 38.64831890000001, 'lng': -90.3075894}, 'zoom': 16,
-		'coords': [{'lat': random.uniform(38.64, 38.65), 'lng': random.uniform(-90.30, -90.31)} for x in
-			range(10)]}
+		'coords': global_vars.data['coords']}
 	return render_template('maps.html', statics=statics, map=mdata)
 
 
