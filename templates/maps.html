@@ -12,32 +12,18 @@
     </div>
 </div>
 <script type="text/javascript">
-	function initialize() {
-		var centerlatlng = new google.maps.LatLng({{ map.center.lat }}, {{ map.center.lng }});
-		var myOptions = {
-			zoom: {{ map.zoom }},
-			center: centerlatlng,
-			mapTypeId: google.maps.MapTypeId.ROADMAP
-		};
-		var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
-
-        var PolylineCoordinates = [
-            {% for coord in map.coords %}
-            new google.maps.LatLng({{ coord.lat }}, {{ coord.lng }}),
-            {% endfor %}
-        ];
-
-        var Path = new google.maps.Polyline({
-            clickable: false,
-            geodesic: true,
-            path: PolylineCoordinates,
-            strokeColor: "#6495ED",
-            strokeOpacity: 1.000000,
-            strokeWeight: 10
-        });
-
-        Path.setMap(map);
-	}
-	initialize()
+var centerlatlng = new google.maps.LatLng({{ map.center.lat }}, {{ map.center.lng }});
+var myOptions = {
+    zoom: {{ map.zoom }},
+    center: centerlatlng,
+    mapTypeId: google.maps.MapTypeId.HYBRID
+};
+var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+var coords = [
+    {% for coord in map.coords %}
+    new google.maps.LatLng({{ coord.lat }}, {{ coord.lng }}),
+    {% endfor %}
+];
 </script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/maps-client.js') }}"></script>
 {% endblock %}

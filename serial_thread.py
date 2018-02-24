@@ -21,12 +21,9 @@ def readData(lock, stop_event):
 		# print("wait")
 		# if ser.inWaiting() > 0:
 		if True:
-			print("read")
 			data = ser.read()
-			print(data)
 			if data == b'\x93':
 				data = ser.read()
-				print(data)
 				if data != b'\x01':
 					print("badver")
 					continue
@@ -40,16 +37,16 @@ def readData(lock, stop_event):
 					global_vars.data['Throttle'] = struct.unpack('>H', ser.read(2))[0]
 					global_vars.data['Speed'] = struct.unpack('>H', ser.read(2))[0]
 					global_vars.data['Volts'] = struct.unpack('>H', ser.read(2))[0]
-					lat = struct.unpack('>i', ser.read(4))[0]
+					global_vars.data['lat'] = lat = struct.unpack('>i', ser.read(4))[0] / 10000000
 					# TODO make it so we don't have to add the minus sign (fix big endian bug)
-					lng = -struct.unpack('>i', ser.read(4))[0]
+					global_vars.data['lng'] = lng = -struct.unpack('>i', ser.read(4))[0] / 10000000
 					global_vars.data['RLPot'] = struct.unpack('>H', ser.read(2))[0]
 					global_vars.data['RRPot'] = struct.unpack('>H', ser.read(2))[0]
 					global_vars.data['FBrake'] = struct.unpack('>H', ser.read(2))[0]
 					global_vars.data['RBrake'] = struct.unpack('>H', ser.read(2))[0]
 					timestamp = struct.unpack('>I', ser.read(4))[0]
-					if not lat == 0 and not lng == 0:
-						global_vars.data['coords'].append({'lat': lat / 10000000, 'lng': lng / 10000000})
+					if not lat == 0 and not lng == 0 and abs(lat) > 1 and abs(lng) > 1:
+						global_vars.data['coords'].append({'lat': lat, 'lng': lng})
 					print("Finished reading")
 
 def cleanup():

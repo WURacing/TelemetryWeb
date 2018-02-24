@@ -22,6 +22,8 @@ def init():
 	global data
 	data = {prefix: 0 for prefix in prefixes}
 	data['coords'] = []
+	data['lat'] = 0
+	data['lng'] = 0
 
 	# mac gets sad when you use : in file names
 	directory = os.path.join(os.getcwd(), "logs", "Engine Data {} {}".format(
