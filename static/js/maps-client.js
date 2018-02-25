@@ -1,12 +1,15 @@
+var source;
 $(function(){
 
-	var socket = io.connect('http://' + document.domain + ':' + location.port);
 	var lastLat = 0;
 	var lastLng = 0;
 	var path = null;
 	var change = true;
 
-	socket.on('message', function(data) {
+	source = new EventSource('/stream');
+
+	source.addEventListener('maps', function omg(event) {
+		data = JSON.parse(event.data);
 		for (var key in data) {
 			if (!data.hasOwnProperty(key)) {
 				continue;
@@ -25,7 +28,7 @@ $(function(){
 			update();
 			change = false;
 		}
-	});
+	}, false);
 
 	function update() {
 		console.log("Updating map");
@@ -53,5 +56,5 @@ $(function(){
 });
 
 window.onbeforeunload = function(e) {
-    socket.disconnect();
+    source.close();
 };

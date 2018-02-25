@@ -4,7 +4,7 @@
 
 var totalPoints = 50;
 var serverUpdates = 100;
-var socket, dataset;
+var source, dataset;
 var now = new Date().getTime();
 var somePlot = null;
 var showData = [];
@@ -187,8 +187,8 @@ var startClientServer = function() {
     var slashes = http.concat("//");
     var host = slashes.concat(window.location.hostname);*/
 
-    //Socket IO communications
-    socket = io.connect('http://' + document.domain + ':' + location.port);
+    source = new EventSource('/stream');
+
 
     //socket.emit('updateInterval', serverUpdates);
     /*
@@ -226,20 +226,16 @@ var startClientServer = function() {
     /*
      * Receiving data from the server
      */
-    socket.on('message', function(data) {
-        //console.log(data);
-        repaintGraph(Date.now(), data);
-    });
+    source.addEventListener('dashboard', function omg(event) {
+		data = JSON.parse(event.data);
+		repaintGraph(Date.now(), data);
+    }, false);
+
 
     /*socket.on('connect', function(e) {
         socket.emit('updateInterval', serverUpdates);
     });*/
 
-    socket.io.on('connect_error', function(err) {
-      // handle server error here
-      socket.disconnect();
-      console.log('Error connecting to server');
-    });
     togglePlot = function(seriesIdx)
     {
         // console.log(showData[seriesIdx]);
@@ -273,5 +269,5 @@ $(document).ready(function () {
     }
 });
 window.onbeforeunload = function(e) {
-    socket.disconnect();
+    source.close();
 };

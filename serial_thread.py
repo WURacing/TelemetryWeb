@@ -1,11 +1,9 @@
+import multiprocessing
+
 import serial
 import global_vars
 import struct
-
-
-def init(port):
-	global ser
-	ser = serial.Serial(port)
+import time
 
 
 def record(prefix, timestamp, payload):
@@ -13,42 +11,46 @@ def record(prefix, timestamp, payload):
 		csvfile.write(str(timestamp) + ',' + str(payload) + '\n')
 
 
-def readData(lock, stop_event):
-	global ser
-	ser.flush()
-	print("Start1")
-	while not stop_event.is_set():
-		# print("wait")
-		# if ser.inWaiting() > 0:
-		if True:
-			data = ser.read()
-			if data == b'\x93':
-				data = ser.read()
-				if data != b'\x01':
-					print("badver")
-					continue
-				with lock:
-					print("Got data")
-					global_vars.data['Coolant'] = struct.unpack('>b', ser.read(1))[0]
-					global_vars.data['O2'] = struct.unpack('>B', ser.read(1))[0]
-					global_vars.data['Gear'] = struct.unpack('>H', ser.read(2))[0]
-					global_vars.data['RPMs'] = struct.unpack('>H', ser.read(2))[0]
-					global_vars.data['Load'] = struct.unpack('>H', ser.read(2))[0]
-					global_vars.data['Throttle'] = struct.unpack('>H', ser.read(2))[0]
-					global_vars.data['Speed'] = struct.unpack('>H', ser.read(2))[0]
-					global_vars.data['Volts'] = struct.unpack('>H', ser.read(2))[0]
-					global_vars.data['lat'] = lat = struct.unpack('>i', ser.read(4))[0] / 10000000
-					# TODO make it so we don't have to add the minus sign (fix big endian bug)
-					global_vars.data['lng'] = lng = -struct.unpack('>i', ser.read(4))[0] / 10000000
-					global_vars.data['RLPot'] = struct.unpack('>H', ser.read(2))[0]
-					global_vars.data['RRPot'] = struct.unpack('>H', ser.read(2))[0]
-					global_vars.data['FBrake'] = struct.unpack('>H', ser.read(2))[0]
-					global_vars.data['RBrake'] = struct.unpack('>H', ser.read(2))[0]
-					timestamp = struct.unpack('>I', ser.read(4))[0]
-					if not lat == 0 and not lng == 0 and abs(lat) > 1 and abs(lng) > 1:
-						global_vars.data['coords'].append({'lat': lat, 'lng': lng})
-					print("Finished reading")
+class SerialProcess(multiprocessing.Process):
+	def __init__(self, output_queue: multiprocessing.Queue, port='/dev/master', baud=9600):
+		multiprocessing.Process.__init__(self)
+		self.output_queue = output_queue
+		self.ser = serial.Serial(port, baud, timeout=1)
 
-def cleanup():
-	global ser
-	ser.close()
+	def close(self):
+		self.ser.close()
+
+	def read_packet(self):
+		if self.ser.read() != b'\x93':
+			return
+		if self.ser.read() != b'\x01':
+			print("Bad serial packet version")
+			return
+
+		coolant = struct.unpack('>b', self.ser.read(1))[0]
+		o2 = struct.unpack('>B', self.ser.read(1))[0]
+		gear = struct.unpack('>H', self.ser.read(2))[0]
+		rpm = struct.unpack('>H', self.ser.read(2))[0]
+		load = struct.unpack('>H', self.ser.read(2))[0]
+		throttle = struct.unpack('>H', self.ser.read(2))[0]
+		speed = struct.unpack('>H', self.ser.read(2))[0]
+		volts = struct.unpack('>H', self.ser.read(2))[0]
+		lat = struct.unpack('>i', self.ser.read(4))[0] / 10000000
+		# TODO make it so we don't have to add the minus sign (fix big endian bug)
+		lng = -struct.unpack('>i', self.ser.read(4))[0] / 10000000
+		rlpot = struct.unpack('>H', self.ser.read(2))[0]
+		rrpot = struct.unpack('>H', self.ser.read(2))[0]
+		fbrake = struct.unpack('>H', self.ser.read(2))[0]
+		rbrake = struct.unpack('>H', self.ser.read(2))[0]
+		timestamp = struct.unpack('>I', self.ser.read(4))[0]
+		pack = {'RPMs': rpm, 'Load': load, 'Throttle': throttle, 'Coolant': coolant, 'O2': o2, 'Speed': speed,
+			'Gear': gear, 'Volts': volts, 'RRPot': rrpot, 'RLPot': rlpot, 'FBrake': fbrake, 'RBrake': rbrake,
+			'lat': lat, 'lng': lng, 'Time': timestamp}
+		self.output_queue.put(pack)
+		print(f"Read packet sent at {timestamp}")
+
+	def run(self):
+		while True:
+			if self.ser.in_waiting > 0:
+				self.read_packet()
+			time.sleep(0.1)

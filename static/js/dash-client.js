@@ -1,3 +1,4 @@
+var source;
 $(function(){
 
 	var decimalPlaces = new Object();
@@ -5,15 +6,15 @@ $(function(){
 		decimalPlaces[$(this).attr("id")] = $(this).attr("decimals");
 	});
 
-	var socket = io.connect('http://' + document.domain + ':' + location.port);
-
-	socket.on('message', function(data) {
+	source = new EventSource('/stream');
+	source.addEventListener('dashboard', function omg(event) {
+		data = JSON.parse(event.data);
 		for (var key in data){
 			if (data.hasOwnProperty(key)){
 				$("#"+key).text(data[key].toFixed(decimalPlaces[key]));
 			}
 		}
-	});
+    }, false);
 
 	function rotate(){
 
@@ -40,5 +41,5 @@ $(function(){
 });
 
 window.onbeforeunload = function(e) {
-    socket.disconnect();
+    source.close();
 };

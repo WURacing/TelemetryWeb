@@ -27,18 +27,14 @@ def serial_ports():
 
 def get_port():
 	ports = serial_ports()
-	if ports != []:
+	if ports:
 		if len(ports) == 1:
 			print("Using port {}".format(ports[0]))
 			return ports[0]
 		print("The following serial ports are available:")
 		print(ports)
 		port = input("Please enter the XBee radio port:")
-		if port in ports:
-			return port
-		else:
-			print("-- Port not recognized, please try again --")
-			return get_port()
+		return port
 	else:
 		print("No serial ports found")
 		sys.exit()
