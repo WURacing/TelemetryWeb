@@ -53,9 +53,12 @@ class SerialProcess(multiprocessing.Process):
 			self.push('maps', {'lng': -struct.unpack('>i', self.ser.read(4))[0] / 10000000, 'Time': timestamp})
 
 	def push(self, key: str, value: dict):
+		prefix = (set(value.keys()) - {'Time'}).pop()
+		if (prefix == 'lat' or prefix == 'lng') and abs(value[prefix]) < 1:
+			# ignore null lat/lng values
+			return
 		with self.app.app_context():
 			sse.publish(value, type=key)
-		prefix = (set(value.keys()) - {'Time'}).pop()
 		global_vars.record(prefix, value['Time'], value[prefix])
 
 	def run(self):

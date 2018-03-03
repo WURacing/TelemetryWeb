@@ -1,9 +1,25 @@
 var source;
+var path = null;
 $(function(){
+
+    google.maps.LatLng.prototype.kmTo = function (a) {
+        var e = Math, ra = e.PI / 180;
+        var b = this.lat() * ra, c = a.lat() * ra, d = b - c;
+        var g = this.lng() * ra - a.lng() * ra;
+        var f = 2 * e.asin(e.sqrt(e.pow(e.sin(d / 2), 2) + e.cos(b) * e.cos
+        (c) * e.pow(e.sin(g / 2), 2)));
+        return f * 6378.137;
+    };
+    google.maps.Polyline.prototype.inKm = function (n) {
+        var a = this.getPath(n), len = a.getLength(), dist = 0;
+        for (var i = 0; i < len - 1; i++) {
+            dist += a.getAt(i).kmTo(a.getAt(i + 1));
+        }
+        return dist;
+    };
 
 	var lastLat = 0;
 	var lastLng = 0;
-	var path = null;
 	var change = true;
 
 	source = new EventSource('/stream');
@@ -39,9 +55,6 @@ $(function(){
 		if (lastLat !== 0 && lastLng !== 0) {
             coords.push(new google.maps.LatLng(lastLat, lastLng));
         }
-        if (coords.length > 50) {
-        	coords.shift();
-		}
 
         path = new google.maps.Polyline({
             clickable: false,
@@ -51,6 +64,10 @@ $(function(){
             strokeOpacity: 1.000000,
             strokeWeight: 10
         });
+
+        if (path.inKm() > 1) {
+        	coords.shift();
+		}
 
         path.setMap(map);
 	}
