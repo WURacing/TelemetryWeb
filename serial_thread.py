@@ -4,6 +4,7 @@ import serial
 import global_vars
 import struct
 import time
+from flask_sse import sse
 
 
 def record(prefix, timestamp, payload):
@@ -12,45 +13,64 @@ def record(prefix, timestamp, payload):
 
 
 class SerialProcess(multiprocessing.Process):
-	def __init__(self, output_queue: multiprocessing.Queue, port='/dev/master', baud=9600):
+	def __init__(self, port='/dev/master', baud=9600, app=None):
 		multiprocessing.Process.__init__(self)
-		self.output_queue = output_queue
 		self.ser = serial.Serial(port, baud, timeout=1)
+		self.app = app
+		self._stop_event = multiprocessing.Event()
 
 	def close(self):
 		self.ser.close()
 
 	def read_packet(self):
-		if self.ser.read() != b'\x93':
-			return
-		if self.ser.read() != b'\x01':
-			print("Bad serial packet version")
+		if self.ser.read() != b'!':
 			return
 
-		coolant = struct.unpack('>b', self.ser.read(1))[0]
-		o2 = struct.unpack('>B', self.ser.read(1))[0]
-		gear = struct.unpack('>H', self.ser.read(2))[0]
-		rpm = struct.unpack('>H', self.ser.read(2))[0]
-		load = struct.unpack('>H', self.ser.read(2))[0]
-		throttle = struct.unpack('>H', self.ser.read(2))[0]
-		speed = struct.unpack('>H', self.ser.read(2))[0]
-		volts = struct.unpack('>H', self.ser.read(2))[0]
-		lat = struct.unpack('>i', self.ser.read(4))[0] / 10000000
-		# TODO make it so we don't have to add the minus sign (fix big endian bug)
-		lng = -struct.unpack('>i', self.ser.read(4))[0] / 10000000
-		rlpot = struct.unpack('>H', self.ser.read(2))[0]
-		rrpot = struct.unpack('>H', self.ser.read(2))[0]
-		fbrake = struct.unpack('>H', self.ser.read(2))[0]
-		rbrake = struct.unpack('>H', self.ser.read(2))[0]
+		key = struct.unpack('>B', self.ser.read())[0]
 		timestamp = struct.unpack('>I', self.ser.read(4))[0]
-		pack = {'RPMs': rpm, 'Load': load, 'Throttle': throttle, 'Coolant': coolant, 'O2': o2, 'Speed': speed,
-			'Gear': gear, 'Volts': volts, 'RRPot': rrpot, 'RLPot': rlpot, 'FBrake': fbrake, 'RBrake': rbrake,
-			'lat': lat, 'lng': lng, 'Time': timestamp}
-		self.output_queue.put(pack)
-		print(f"Read packet sent at {timestamp}")
+		if key == 0x30:
+			self.push('dashboard', {'RPMs': struct.unpack('>f', self.ser.read(4))[0], 'Time': timestamp})
+		if key == 0x31:
+			self.push('dashboard', {'Load': struct.unpack('>f', self.ser.read(4))[0], 'Time': timestamp})
+		if key == 0x32:
+			self.push('dashboard', {'Throttle': struct.unpack('>f', self.ser.read(4))[0], 'Time': timestamp})
+		if key == 0x33:
+			self.push('dashboard', {'Coolant': struct.unpack('>f', self.ser.read(4))[0], 'Time': timestamp})
+		if key == 0x34:
+			self.push('dashboard', {'O2': struct.unpack('>f', self.ser.read(4))[0], 'Time': timestamp})
+		if key == 0x35:
+			self.push('dashboard', {'Speed': struct.unpack('>f', self.ser.read(4))[0], 'Time': timestamp})
+		if key == 0x36:
+			self.push('dashboard', {'Gear': struct.unpack('>B', self.ser.read())[0], 'Time': timestamp})
+		if key == 0x37:
+			self.push('dashboard', {'Volts': struct.unpack('>f', self.ser.read(4))[0], 'Time': timestamp})
+		if key == 0x38:
+			self.push('dashboard', {'RRPot': struct.unpack('>f', self.ser.read(4))[0], 'Time': timestamp})
+		if key == 0x39:
+			self.push('dashboard', {'RLPot': struct.unpack('>f', self.ser.read(4))[0], 'Time': timestamp})
+		if key == 0x40:
+			self.push('dashboard', {'FBrake': struct.unpack('>f', self.ser.read(4))[0], 'Time': timestamp})
+		if key == 0x41:
+			self.push('dashboard', {'RBrake': struct.unpack('>f', self.ser.read(4))[0], 'Time': timestamp})
+		if key == 0x42:
+			self.push('maps', {'lat': struct.unpack('>i', self.ser.read(4))[0] / 10000000, 'Time': timestamp})
+		if key == 0x43:
+			self.push('maps', {'lng': -struct.unpack('>i', self.ser.read(4))[0] / 10000000, 'Time': timestamp})
+
+	def push(self, key, value):
+		with self.app.app_context():
+			sse.publish(value, type=key)
 
 	def run(self):
-		while True:
+		while not self.stopped():
 			if self.ser.in_waiting > 0:
 				self.read_packet()
-			time.sleep(0.1)
+			time.sleep(0.00001)
+		self.close()
+
+	def stop(self):
+		self._stop_event.set()
+
+	def stopped(self):
+		return self._stop_event.is_set()
+
