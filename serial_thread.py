@@ -7,17 +7,11 @@ import time
 from flask_sse import sse
 
 
-def record(prefix, timestamp, payload):
-	with open(global_vars.filenames[prefix], 'a') as csvfile:
-		csvfile.write(str(timestamp) + ',' + str(payload) + '\n')
-
-
 class SerialProcess(multiprocessing.Process):
 	def __init__(self, port='/dev/master', baud=9600, app=None):
 		multiprocessing.Process.__init__(self)
 		self.ser = serial.Serial(port, baud, timeout=1)
 		self.app = app
-		self._stop_event = multiprocessing.Event()
 
 	def close(self):
 		self.ser.close()
@@ -28,6 +22,7 @@ class SerialProcess(multiprocessing.Process):
 
 		key = struct.unpack('>B', self.ser.read())[0]
 		timestamp = struct.unpack('>I', self.ser.read(4))[0]
+		print("Read {key:x} at {timestamp}".format(key=key, timestamp=timestamp))
 		if key == 0x30:
 			self.push('dashboard', {'RPMs': struct.unpack('>f', self.ser.read(4))[0], 'Time': timestamp})
 		if key == 0x31:
@@ -57,20 +52,19 @@ class SerialProcess(multiprocessing.Process):
 		if key == 0x43:
 			self.push('maps', {'lng': -struct.unpack('>i', self.ser.read(4))[0] / 10000000, 'Time': timestamp})
 
-	def push(self, key, value):
+	def push(self, key: str, value: dict):
 		with self.app.app_context():
 			sse.publish(value, type=key)
+		prefix = (set(value.keys()) - {'Time'}).pop()
+		global_vars.record(prefix, value['Time'], value[prefix])
 
 	def run(self):
-		while not self.stopped():
+		while True:
 			if self.ser.in_waiting > 0:
 				self.read_packet()
 			time.sleep(0.00001)
-		self.close()
 
 	def stop(self):
-		self._stop_event.set()
-
-	def stopped(self):
-		return self._stop_event.is_set()
-
+		self.close()
+		self.terminate()
+		self.close()

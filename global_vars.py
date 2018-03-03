@@ -11,19 +11,13 @@ filenames = {}
 def init():
 	global prefixes
 	prefixes = ["RPMs", "Load", "Throttle", "Coolant", "O2", "Speed", "Gear", "Volts", "RRPot", "RLPot", "FBrake",
-		"RBrake"]
+		"RBrake", "lat", "lng"]
 
 	global primaries
 	primaries = ["RPMs", "Load", "Throttle", "RRPot", "RLPot", "FBrake", "RBrake"]
 
 	global secondaries
 	secondaries = ["Coolant", "O2", "Speed", "Gear", "Volts"]
-
-	global data
-	data = {prefix: 0 for prefix in prefixes}
-	data['coords'] = []
-	data['lat'] = 0
-	data['lng'] = 0
 
 	# mac gets sad when you use : in file names
 	directory = os.path.join(os.getcwd(), "logs", "Engine Data {} {}".format(
@@ -33,3 +27,10 @@ def init():
 
 	global filenames
 	filenames = {prefix: os.path.join(directory, "{}.csv".format(prefix)) for prefix in prefixes}
+
+
+def record(prefix, timestamp, payload):
+	with open(filenames[prefix], 'a') as csvfile:
+		csvfile.write("{timestamp},{payload}\n".format(timestamp=timestamp, payload=payload))
+
+

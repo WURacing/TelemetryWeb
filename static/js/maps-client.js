@@ -39,6 +39,9 @@ $(function(){
 		if (lastLat !== 0 && lastLng !== 0) {
             coords.push(new google.maps.LatLng(lastLat, lastLng));
         }
+        if (coords.length > 50) {
+        	coords.shift();
+		}
 
         path = new google.maps.Polyline({
             clickable: false,
