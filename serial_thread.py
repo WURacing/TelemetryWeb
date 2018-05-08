@@ -117,6 +117,20 @@ def readData(lock,stop_event):
 						global_vars.data["RBrake"] = payload
 					record(prefix="RBrake",timestamp=timestamp,payload=payload)
 
+				elif data == b'\x42':
+					timestamp = struct.unpack('>I', ser.read(4))[0]
+					payload = struct.unpack('>I', ser.read(4))[0]
+					with lock:
+						global_vars.data["lat"] = payload / 10000000.0
+					record(prefix="lat", timestamp=timestamp, payload=payload)
+
+				elif data == b'\x43':
+					timestamp = struct.unpack('>I', ser.read(4))[0]
+					payload = struct.unpack('>I', ser.read(4))[0]
+					with lock:
+						global_vars.data["lng"] = payload / 10000000.0
+					record(prefix="lng", timestamp=timestamp, payload=payload)
+
 				else:
 					print("ERROR: Corrupted Data")
 			else:

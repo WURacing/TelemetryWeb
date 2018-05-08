@@ -12,11 +12,13 @@
 			<link rel="stylesheet" href="{{url_for('static',filename='css/'+x[1])}}">
 		{% endif %}
 	{% endfor %}
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=visualization&sensor=true_or_false&key=AIzaSyBVCzMDvdCfODmQdIx7ctT_dLuDKQpWE7g"></script>
 </head>
 <body>
 	<ul class="navbar">
 		<li class="navbar_li"><a class="navbar_a" href="/"><b>Dashboard</b></a></li>
 		<li class="navbar_li"><a class="navbar_a" href="/plots"><b>Plots</b></a></li>
+		<li class="navbar_li"><a class="navbar_a" href="/maps"><b>Maps</b></a></li>
 	</ul>
 {% block body %}{% endblock %}
 </body>
