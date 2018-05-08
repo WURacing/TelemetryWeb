@@ -118,16 +118,18 @@ def readData(lock,stop_event):
 					record(prefix="RBrake",timestamp=timestamp,payload=payload)
 
 				elif (data == bytes(b'B')):
-					timestamp = struct.unpack('>I',ser.read(4))[0]
-					payload = struct.unpack('>f',ser.read(4))[0]
-					print('GOT LATITUDE')
-					print(payload)
+					timestamp = struct.unpack('>I', ser.read(4))[0]
+					payload = struct.unpack('>I', ser.read(4))[0]
+					with lock:
+						global_vars.data["lat"] = payload / 10000000.0
+					record(prefix="lat", timestamp=timestamp, payload=payload)
 
 				elif (data == bytes(b'C')):
-					timestamp = struct.unpack('>I',ser.read(4))[0]
-					payload = struct.unpack('>f',ser.read(4))[0]
-					print('GOT LONGITUDE')
-					print(payload)
+					timestamp = struct.unpack('>I', ser.read(4))[0]
+					payload = struct.unpack('>I', ser.read(4))[0]
+					with lock:
+						global_vars.data["lng"] = payload / 10000000.0
+					record(prefix="lng", timestamp=timestamp, payload=payload)
 
 				elif (data == bytes(b'D')):
 					timestamp = struct.unpack('>I',ser.read(4))[0]

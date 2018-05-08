@@ -1,0 +1,28 @@
+{% extends "index.html" %}
+{% block body %}
+	<div id="center">
+		<div id="header">
+			<img src="{{url_for('static',filename='img/logo.png')}}">
+			<h1>Track Maps</h1>
+		</div>
+		<div id="content">
+			<div id="middle">
+				<div id="map_canvas" style="width: 700px; height: 450px;"></div>
+			</div>
+		</div>
+	</div>
+	<script type="text/javascript">
+		var centerlatlng = new google.maps.LatLng({{ map.center.lat }}, {{ map.center.lng }});
+		var myOptions = {
+			zoom: {{ map.zoom }},
+			center: centerlatlng,
+			mapTypeId: google.maps.MapTypeId.HYBRID
+		};
+		var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+		var coords = [
+			{% for coord in map.coords %}
+				new google.maps.LatLng({{ coord.lat }}, {{ coord.lng }}),
+			{% endfor %}
+		];
+	</script>
+{% endblock %}
